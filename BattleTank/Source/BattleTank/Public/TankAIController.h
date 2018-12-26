@@ -2,11 +2,9 @@
 
 #pragma once
 
-#include "Tank.h"
 #include "CoreMinimal.h"
 #include "AIController.h"
 #include "TankAIController.generated.h"
-
 /**
  * 
  */
@@ -23,9 +21,7 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	// Gets the controlled pawn as an ATank
-	ATank* GetControlledTank() const;
-
-	ATank* GetPlayerTank() const;
+	UPROPERTY(EditDefaultsOnly, Category = Setup)
+	float AcceptanceRadius = 3000;
 
 };
