@@ -1,21 +1,24 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "TankPlayerController.h"
+#include "TankAimingComponent.h"
 #include "Tank.h"
 
-// Called when the game starts or when spawned
+// Sets default values
+ATankPlayerController::ATankPlayerController()
+{
+	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	PrimaryActorTick.bCanEverTick = true;
+}
+
 void ATankPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	auto ControlledTank = GetControlledTank();
-	if (!ControlledTank)
+	auto TankAiming = GetPawn()->FindComponentByClass<UTankAimingComponent>();
+	if (ensure(TankAiming))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("PlayerController not possessing a tank"));
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("PlayerController possessing %s"), *ControlledTank->GetName());
+		FoundAimingComponent(TankAiming);
 	}
 }
 
@@ -25,24 +28,40 @@ void ATankPlayerController::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	AimTowardsCrosshair();
-
 }
 
-ATank* ATankPlayerController::GetControlledTank() const
+void ATankPlayerController::SetPawn(APawn * InPawn)
 {
-	return Cast<ATank>(GetPawn());
+	Super::SetPawn(InPawn);
 
+	if (InPawn)
+	{
+		auto PossessedTank = Cast<ATank>(InPawn);
+		if (ensure(PossessedTank))
+		{
+			PossessedTank->OnDeath.AddUniqueDynamic(this, &ATankPlayerController::OnPossessedTankDeath);
+		}
+	}
+}
+
+void ATankPlayerController::OnPossessedTankDeath()
+{
+	StartSpectatingOnly();
 }
 
 void ATankPlayerController::AimTowardsCrosshair()
 {
-	auto ControlledTank = GetControlledTank();
-	if (!ControlledTank) { return; }
-
-	FVector HitLocation;
-	if (GetSightRayHitLocation(HitLocation))
-	{ 
-		ControlledTank->AimAt(HitLocation);
+	if (GetPawn())
+	{
+		auto TankAiming = GetPawn()->FindComponentByClass<UTankAimingComponent>();
+		if (ensure(TankAiming))
+		{
+			FVector HitLocation;
+			if (GetSightRayHitLocation(HitLocation))
+			{
+				TankAiming->AimAt(HitLocation);
+			}
+		}
 	}
 }
 
@@ -50,20 +69,16 @@ bool ATankPlayerController::GetSightRayHitLocation(FVector& HitLocation) const
 {
 	int32 ViewportSizeX, ViewportSizeY;
 	GetViewportSize(ViewportSizeX, ViewportSizeY);
-	auto ScreenLocation = FVector2D(ViewportSizeX * CrosshairXLocation, ViewportSizeY * CrosshairYLocation);
-
+	
+	auto ScreenLocation = FVector2D(ViewportSizeX * CrosshairLocation.X, ViewportSizeY * CrosshairLocation.Y);
+	FVector CameraLocation;
 	FVector LookDirection;
-	if (GetLookDirection(ScreenLocation, LookDirection))
+
+	if (DeprojectScreenPositionToWorld(ScreenLocation.X, ScreenLocation.Y, CameraLocation, LookDirection))
 	{
 		GetLookTargetLocation(LookDirection, HitLocation);
 	}
 	return true;
-}
-
-bool ATankPlayerController::GetLookDirection(FVector2D ScreenLocation, FVector& LookDirection) const
-{
-	FVector CameraLocation;
-	return DeprojectScreenPositionToWorld(ScreenLocation.X, ScreenLocation.Y, CameraLocation, LookDirection);
 }
 
 bool ATankPlayerController::GetLookTargetLocation(FVector LookDirection, FVector& HitLocation) const

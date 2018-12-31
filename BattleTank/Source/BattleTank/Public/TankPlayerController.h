@@ -6,7 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "TankPlayerController.generated.h"
 
-class ATank;
+class UTankAimingComponent;
 
 /**
  * 
@@ -17,32 +17,31 @@ class BATTLETANK_API ATankPlayerController : public APlayerController
 	GENERATED_BODY()
 
 protected:
-	// Called when the game starts or when spawned
+	UFUNCTION(BlueprintImplementableEvent, Category = "Setup")
+	void FoundAimingComponent(UTankAimingComponent* TankAiming);
+
+private:
+	// Sets default values
+	ATankPlayerController();
+
 	virtual void BeginPlay() override;
 
-public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	// Gets the controlled pawn as an ATank
-	ATank* GetControlledTank() const;
-
-	void AimTowardsCrosshair();
-
-	bool GetSightRayHitLocation(FVector& HitLocation) const;
+	virtual void SetPawn(APawn* InPawn) override;
 
 	UPROPERTY(EditDefaultsOnly)
-	float CrosshairXLocation = 0.5;
-
-	UPROPERTY(EditDefaultsOnly)
-	float CrosshairYLocation = 0.3;
+	FVector2D CrosshairLocation = FVector2D(0.5, 0.3);
 
 	UPROPERTY(EditDefaultsOnly)
 	float LineTraceRange = 1000000.f;
 
-	bool GetLookDirection(FVector2D ScreenLocation, FVector& LookDirection) const;
-
+	void AimTowardsCrosshair();
+	bool GetSightRayHitLocation(FVector& HitLocation) const;
 	bool GetLookTargetLocation(FVector LookDirection, FVector& HitLocation) const;
 
+	UFUNCTION()
+	void OnPossessedTankDeath();
 
 };

@@ -3,8 +3,6 @@
 #include "Tank.h"
 #include "TankAimingComponent.h"
 #include "TankMovementComponent.h"
-#include "TankBarrel.h"
-#include "Projectile.h"
 
 // Sets default values
 ATank::ATank()
@@ -15,37 +13,24 @@ ATank::ATank()
 	TankAimingComponent = CreateDefaultSubobject<UTankAimingComponent>(FName("AimingComponent"));
 	TankMovementComponent = CreateDefaultSubobject<UTankMovementComponent>(FName("MovementComponent"));
 
+	CurrentHealth = StartingHealth;
 }
 
-// Called when the game starts or when spawned
-void ATank::BeginPlay()
+float ATank::TakeDamage(float DamageAmount, FDamageEvent const & DamageEvent, AController * EventInstigator, AActor * DamageCauser)
 {
-	Super::BeginPlay();
-}
+	int32 DamagePoints = FPlatformMath::RoundToInt(DamageAmount);
+	auto DamageToApply = FMath::Clamp(DamagePoints, 0, CurrentHealth);
 
-// Called to bind functionality to input
-void ATank::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-}
-
-void ATank::SetBarrelReference(UTankBarrel* BarrelToSet)
-{
-	Barrel = BarrelToSet;
-}
-
-void ATank::AimAt(FVector HitLocation)
-{
-	TankAimingComponent->AimAt(HitLocation, LaunchSpeed);
-}
-
-void ATank::Fire()
-{
-	bool IsReloaded = (FPlatformTime::Seconds() - LastFireTime) > ReloadTimeInSeconds;
-	if (Barrel && IsReloaded) {
-		auto Projectile = GetWorld()->SpawnActor<AProjectile>(ProjectileBP, Barrel->GetSocketLocation(FName("Projectile")), Barrel->GetSocketRotation(FName("Projectile")));
-		Projectile->Launch(LaunchSpeed);
-		LastFireTime = FPlatformTime::Seconds();
+	CurrentHealth -= DamageToApply;
+	if (CurrentHealth <= 0)
+	{
+		OnDeath.Broadcast();
 	}
+
+	return DamageToApply;
+}
+
+float ATank::GetHealthPercent() const
+{
+	return (float)CurrentHealth / (float)StartingHealth;
 }

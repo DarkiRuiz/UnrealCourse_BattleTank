@@ -13,15 +13,19 @@ class BATTLETANK_API ATankAIController : public AAIController
 {
 	GENERATED_BODY()
 
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+private:
+	// Sets default values
+	ATankAIController();
 
-public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	virtual void SetPawn(APawn* InPawn) override;
+
 	UPROPERTY(EditDefaultsOnly, Category = Setup)
 	float AcceptanceRadius = 3000;
+
+	UFUNCTION()
+	void OnPossessedTankDeath();
 
 };

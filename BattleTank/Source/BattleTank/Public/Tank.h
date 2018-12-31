@@ -8,53 +8,37 @@
 
 class UTankAimingComponent;
 class UTankMovementComponent;
-class UTankBarrel;
-class AProjectile;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FTankDelegate);
 
 UCLASS()
 class BATTLETANK_API ATank : public APawn
 {
 	GENERATED_BODY()
 
-public:
+private:
 	// Sets default values for this pawn's properties
 	ATank();
 
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
-	UPROPERTY(BlueprintReadOnly)
+public:
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite, Category = "Components")
 	UTankAimingComponent* TankAimingComponent = nullptr;
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite, Category = "Components")
 	UTankMovementComponent* TankMovementComponent = nullptr;
-
-public:
-
-	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-	UTankBarrel* Barrel = nullptr;
-
-	UFUNCTION(BlueprintCallable)
-	void SetBarrelReference(UTankBarrel* BarrelToSet);
-
-	// Aim the barrel at a target location
-	void AimAt(FVector HitLocation);
-
-	UPROPERTY(EditDefaultsOnly, Category = Firing)
-	float LaunchSpeed = 100000;
 	
-	UPROPERTY(EditDefaultsOnly, Category = Firing)
-	float ReloadTimeInSeconds = 3;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Setup")
+	int32 StartingHealth = 100;
 
-	double LastFireTime = 0;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Setup")
+	int32 CurrentHealth;
 
-	UPROPERTY(EditDefaultsOnly, Category = Firing)
-	TSubclassOf<AProjectile> ProjectileBP;
+	//Called by the engine when actor is dealt damage
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+	
+	UFUNCTION(BlueprintPure, Category = "Health")
+	float GetHealthPercent() const;
 
-	UFUNCTION(BlueprintCallable)
-	void Fire();
+	FTankDelegate OnDeath;
 
 };
