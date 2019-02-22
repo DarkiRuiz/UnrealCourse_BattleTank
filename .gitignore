@@ -50,10 +50,14 @@ SourceArt/**/*.tga
 
 # Binary Files
 Binaries/*
-!Binaries/Win64/RE_IndigosEditor.target
-!Binaries/Win64/UE4Editor.modules
-!Binaries/Win64/UE4Editor-RE_Indigos.dll
 Plugins/*/Binaries/*
+
+# Whitelist Binary Files
+!Binaries/*/
+Binaries/*/**
+!Binaries/Win64/BattleTankEditor.target
+!Binaries/Win64/UE4Editor.modules
+!Binaries/Win64/UE4Editor-BattleTank.dll
 
 # Builds
 Build/*
