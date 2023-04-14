@@ -13,6 +13,7 @@ enum class EFiringState : uint8
 	Locked,
 	Aiming,
 	Reloading,
+	OutOfBounds,
 	OutOfAmmo
 };
 
@@ -33,11 +34,14 @@ private:
 	UTankBarrel* Barrel = nullptr;
 	double LastFireTime = 0.0;
 	FVector AimDirection;
+	bool bAimingOutOfBounds = true;
 
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 	bool IsBarrelMoving();
+
+	bool IsAimingOutOfBounds();
 
 private:
 	UFUNCTION()
@@ -84,12 +88,14 @@ public:
 	void Fire();
 	
 	// Calculates crosshair projection on the world and aims towards it
-	void AimAt(FVector HitLocation);
+	void AimAt(FVector InAimLocation);
+
+	void SetAimingOutOfBounds(bool bInOutOfBounds);
 
 	void EnemyKilled(AActor* Enemy);
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "State")
-	EFiringState FiringState = EFiringState::Reloading;
+	EFiringState FiringState = EFiringState::OutOfAmmo;
 
 };

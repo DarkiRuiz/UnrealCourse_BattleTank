@@ -76,8 +76,11 @@ bool ATankAIController::GetLineOfSightToLocation(FVector HitLocation)
 	{
 		auto EndLocation = HitResult.Location;
 		if (EndLocation.Equals(HitLocation, LineTraceTolerance))
-		return true;
+		{
+			return true;
+		}
 	}
+
 	return false;
 }
 

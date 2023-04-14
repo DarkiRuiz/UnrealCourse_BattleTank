@@ -21,7 +21,7 @@ void UTankWheel::BeginSuspension()
 		Suspension = NewObject<UPhysicsConstraintComponent>(GetOwner());
 		Suspension->AttachToComponent(Parent, FAttachmentTransformRules::KeepRelativeTransform, GetAttachSocketName());
 		Suspension->RegisterComponent();
-		Suspension->SetRelativeLocationAndRotation(RelativeLocation, RelativeRotation);
+		Suspension->SetRelativeLocationAndRotation(GetRelativeLocation(), GetRelativeRotation());
 		Parent->SetSimulatePhysics(true);
 		SetSimulatePhysics(true);
 		Suspension->SetConstrainedComponents(Parent, NAME_None, this, NAME_None);

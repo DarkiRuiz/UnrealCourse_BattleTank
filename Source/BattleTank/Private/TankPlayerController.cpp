@@ -28,14 +28,14 @@ void ATankPlayerController::SetPawn(APawn* InPawn)
 
 	if (InPawn)
 	{
-		TankAiming = InPawn->FindComponentByClass<UTankAimingComponent>();
-		TankHealth = InPawn->FindComponentByClass<UTankHealthComponent>();
+		TankAimingComp = InPawn->FindComponentByClass<UTankAimingComponent>();
+		TankHealthComp = InPawn->FindComponentByClass<UTankHealthComponent>();
 
-		OnPossessedTank(TankAiming, TankHealth);
+		OnPossessedTank(TankAimingComp, TankHealthComp);
 
-		if (TankHealth)
+		if (TankHealthComp)
 		{
-			TankHealth->OnDeath.AddUniqueDynamic(this, &ATankPlayerController::OnPossessedTankDeath);
+			TankHealthComp->OnDeath.AddUniqueDynamic(this, &ATankPlayerController::OnPossessedTankDeath);
 		}
 	}
 }
@@ -47,33 +47,32 @@ void ATankPlayerController::OnPossessedTankDeath()
 
 void ATankPlayerController::AimTowardsCrosshair()
 {
-	if (TankAiming)
+	if (TankAimingComp)
 	{
-		auto HitLocation = FVector(0);
-		if (GetSightRayHitLocation(HitLocation))
+		int32 ViewportSizeX, ViewportSizeY;
+		GetViewportSize(ViewportSizeX, ViewportSizeY);
+
+		auto ScreenLocation = FVector2D(ViewportSizeX * CrosshairLocation.X, ViewportSizeY * CrosshairLocation.Y);
+		FVector CameraLocation;
+		FVector AimDirection;
+
+		if (DeprojectScreenPositionToWorld(ScreenLocation.X, ScreenLocation.Y, CameraLocation, AimDirection))
 		{
-			TankAiming->AimAt(HitLocation);
+			FVector AimLocation;
+			if (GetLookTargetLocation(AimDirection, AimLocation))
+			{
+				TankAimingComp->SetAimingOutOfBounds(false);
+				TankAimingComp->AimAt(AimLocation);
+			}
+			else {
+				TankAimingComp->SetAimingOutOfBounds(true);
+				TankAimingComp->AimAt(AimDirection);
+			}
+		}
+		else {
+			TankAimingComp->SetAimingOutOfBounds(true);
 		}
 	}
-}
-
-bool ATankPlayerController::GetSightRayHitLocation(FVector& HitLocation) const
-{
-	int32 ViewportSizeX, ViewportSizeY;
-	GetViewportSize(ViewportSizeX, ViewportSizeY);
-	
-	auto ScreenLocation = FVector2D(ViewportSizeX * CrosshairLocation.X, ViewportSizeY * CrosshairLocation.Y);
-	FVector CameraLocation;
-	FVector LookDirection;
-
-	if (DeprojectScreenPositionToWorld(ScreenLocation.X, ScreenLocation.Y, CameraLocation, LookDirection))
-	{
-		if (GetLookTargetLocation(LookDirection, HitLocation))
-		{
-			return true;
-		}
-	}
-	return false;
 }
 
 bool ATankPlayerController::GetLookTargetLocation(FVector LookDirection, FVector& HitLocation) const

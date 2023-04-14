@@ -42,7 +42,7 @@ AAutoSpawner::AAutoSpawner(const FObjectInitializer& ObjectInitializer)
 		if (GetGoodSprite())
 		{
 			GetGoodSprite()->Sprite = ConstructorStatics.PlayerStartTextureObject.Get();
-			GetGoodSprite()->RelativeScale3D = FVector(0.5f, 0.5f, 0.5f);
+			GetGoodSprite()->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
 			GetGoodSprite()->SpriteInfo.Category = ConstructorStatics.ID_PlayerStart;
 			GetGoodSprite()->SpriteInfo.DisplayName = ConstructorStatics.NAME_PlayerStart;
 		}

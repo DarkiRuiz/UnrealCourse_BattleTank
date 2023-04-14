@@ -1,71 +1,49 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "TankMovementComponent.h"
+#include "TankTrack.h"
 
-// Sets default values for this component's properties
-UTankMovementComponent::UTankMovementComponent()
+
+void UTankMovementComponent::BeginPlay()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = true;
+	Super::BeginPlay();
 
-	// ...
+	//...
 
-	PrimaryComponentTick.TickGroup = TG_PostPhysics;
-	bAutoActivate = false;
+	Initialise();
 }
 
-void UTankMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction * ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	if (GetWorld()->TickGroup == TG_PostPhysics)
-	{
-		RightForceThisFrame = 0.f;
-		LeftForceThisFrame = 0.f;
-	}
-}
-
-void UTankMovementComponent::Initialise(UStaticMeshComponent* MassToSet, UStaticMeshComponent* RightTrackToSet, UStaticMeshComponent* LeftTrackToSet, TArray<UStaticMeshComponent*> RightWheelsToSet, TArray<UStaticMeshComponent*> LeftWheelsToSet)
-{
-	Mass = MassToSet;
-
-	RightTrack = RightTrackToSet;
-	LeftTrack = LeftTrackToSet;
-
-	RightWheels = RightWheelsToSet;
-	LeftWheels = LeftWheelsToSet;
-
-	if (RightTrack)
-	{
-		for (auto RightWheel : RightWheels)
-		{
-			RightWheel->OnComponentHit.AddDynamic(this, &UTankMovementComponent::OnRightHit);
-		}
-	}
-
-	if (LeftTrack)
-	{
-		for (auto LeftWheel : LeftWheels)
-		{
-			LeftWheel->OnComponentHit.AddDynamic(this, &UTankMovementComponent::OnLeftHit);
-		}
-	}
-
-	Activate();
-}
 
 void UTankMovementComponent::IntendMoveForward(float Throw)
 {
-	SetThrottle(Throw, RightForceThisFrame);
-	SetThrottle(Throw, LeftForceThisFrame);
+	if (RightTrack && LeftTrack)
+	{
+		RightTrack->SetThrottle(Throw);
+		LeftTrack->SetThrottle(Throw);
+	}
 }
+
 
 void UTankMovementComponent::IntendMoveRight(float Throw)
 {
-	SetThrottle(-Throw, RightForceThisFrame);
-	SetThrottle(Throw, LeftForceThisFrame);
+	if (RightTrack && LeftTrack)
+	{
+		RightTrack->SetThrottle(-RightTrack->GetTurnFactor() * Throw);
+		LeftTrack->SetThrottle(LeftTrack->GetTurnFactor() * Throw);
+	}
 }
+
+
+ATankTrack* UTankMovementComponent::GetRightTrack() const
+{
+	return RightTrack;
+}
+
+ATankTrack* UTankMovementComponent::GetLeftTrack() const
+{
+	return LeftTrack;
+}
+
 
 void UTankMovementComponent::RequestDirectMove(const FVector& MoveVelocity, bool bForceMaxSpeed)
 {
@@ -79,25 +57,27 @@ void UTankMovementComponent::RequestDirectMove(const FVector& MoveVelocity, bool
 	IntendMoveRight(RightThrow);
 }
 
-void UTankMovementComponent::OnRightHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
-{
-	auto ForceMagnitude = RightForceThisFrame * MaxDrivingForce * Mass->GetMass() / RightWheels.Num();
-	auto ForceToAdd = Mass->GetForwardVector() * ForceMagnitude;
-	auto ForceLocation = HitComponent->GetComponentLocation() + RightForceOffset;
-	
-	HitComponent->AddForceAtLocation(ForceToAdd, ForceLocation);
-}
 
-void UTankMovementComponent::OnLeftHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+void UTankMovementComponent::Initialise()
 {
-	auto ForceMagnitude = LeftForceThisFrame * MaxDrivingForce * Mass->GetMass() / LeftWheels.Num();
-	auto ForceToAdd = Mass->GetForwardVector() * ForceMagnitude;
-	auto ForceLocation = HitComponent->GetComponentLocation() + LeftForceOffset;
+	TArray<USceneComponent*> Children;
 
-	HitComponent->AddForceAtLocation(ForceToAdd, ForceLocation);
-}
+	TArray<AActor*> AttachedActors;
+	GetOwner()->GetAttachedActors(AttachedActors);
 
-void UTankMovementComponent::SetThrottle(float Throttle, float& ForceThisFrame)
-{
-	ForceThisFrame += FMath::Clamp(Throttle, -1.f, 1.f);
+	for (auto AttachedActor : AttachedActors)
+	{
+		auto Track = Cast<ATankTrack>(AttachedActor);
+		if (Track)
+		{
+			if (Track->GetTrackSide() == ETrackSide::Right)
+			{
+				RightTrack = Track;
+			}
+			else if (Track->GetTrackSide() == ETrackSide::Left)
+			{
+				LeftTrack = Track;
+			}
+		}
+	}
 }

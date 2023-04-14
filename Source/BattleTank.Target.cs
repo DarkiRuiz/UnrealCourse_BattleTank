@@ -8,7 +8,9 @@ public class BattleTankTarget : TargetRules
 	public BattleTankTarget(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Game;
+        DefaultBuildSettings = BuildSettingsVersion.V2;
+        IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
 
-		ExtraModuleNames.AddRange( new string[] { "BattleTank" } );
+        ExtraModuleNames.AddRange( new string[] { "BattleTank" } );
 	}
 }

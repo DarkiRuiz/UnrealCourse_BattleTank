@@ -40,11 +40,10 @@ private:
 	float LineTraceRange = 1000000.f;
 
 	void AimTowardsCrosshair();
-	bool GetSightRayHitLocation(FVector& HitLocation) const;
 	bool GetLookTargetLocation(FVector LookDirection, FVector& HitLocation) const;
 
-	UTankAimingComponent* TankAiming = nullptr;
-	UTankHealthComponent* TankHealth = nullptr;
+	UTankAimingComponent* TankAimingComp = nullptr;
+	UTankHealthComponent* TankHealthComp = nullptr;
 
 
 };

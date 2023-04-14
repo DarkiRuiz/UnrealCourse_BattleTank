@@ -2,78 +2,132 @@
 
 #include "TankTrack.h"
 #include "TrackWheel.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "Components/SplineComponent.h"
+#include "Components/TimelineComponent.h"
 
-
-void UTankTrack::BeginPlay()
+// Sets default values
+ATankTrack::ATankTrack()
 {
-	Super::BeginPlay();
+ 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	PrimaryActorTick.bCanEverTick = true;
 
-	//...
+	Track = CreateDefaultSubobject<UStaticMeshComponent>("Track");
+	Tire = CreateDefaultSubobject<UInstancedStaticMeshComponent>("Tire");
+	Spline = CreateDefaultSubobject<USplineComponent>("Spline");
 
-	Wheels = FindAttachedWheels();
+	SetRootComponent(Track);
+	Tire->SetupAttachment(Track);
+	Spline->SetupAttachment(Tire);
 
 }
 
-
-void UTankTrack::SetThrottle(float Throttle)
+ETrackSide ATankTrack::GetTrackSide() const
 {
-	float MaxForcePerWheel = MaxDrivingForce / Wheels.Num();
-	for (auto Wheel : Wheels)
+	return TrackSide;
+}
+
+float ATankTrack::GetMaxDrivingForce() const
+{
+	return MaxDrivingForce;
+}
+
+float ATankTrack::GetTurnFactor() const
+{
+	return TurnFactor;
+}
+
+TArray<ATrackWheel*> ATankTrack::GetWheels() const
+{
+	return TrackWheels;
+}
+
+void ATankTrack::SetThrottle(float Throttle)
+{
+	float MaxForcePerWheel = MaxDrivingForce / TrackWheels.Num();
+	for (auto Wheel : TrackWheels)
 	{
 		Wheel->SetWheelForce(Throttle, MaxForcePerWheel);
 	}
 }
 
-
-ETrackSide UTankTrack::GetTrackSide() const
+// Called when the game starts or when spawned
+void ATankTrack::BeginPlay()
 {
-	return TrackSide;
+	Super::BeginPlay();
+	
+	//...
+	GenerateTire();
+	TrackWheels = FindAttachedWheels();
 }
 
 
-float UTankTrack::GetMaxDrivingForce() const
+TArray<ATrackWheel*> ATankTrack::FindAttachedWheels()
 {
-	return MaxDrivingForce;
-}
-
-
-float UTankTrack::GetTurnFactor() const
-{
-	return TurnFactor;
-}
-
-TArray<ATrackWheel*> UTankTrack::GetWheels() const
-{
-	return Wheels;
-}
-
-
-TArray<ATrackWheel*> UTankTrack::FindAttachedWheels()
-{
-	TArray<ATrackWheel*> Wheels;	
-	TArray<USceneComponent*> Children;
-	GetChildrenComponents(true, Children);
-	for (auto Component : Children)
+	TArray<ATrackWheel*> Wheels;
+	TArray<AActor*> AttachedActors;
+	GetAttachedActors(AttachedActors);
+	for (auto AttachedActor : AttachedActors)
 	{
-		auto Child = Cast<UChildActorComponent>(Component);
-		if (Child)
+		auto Wheel = Cast<ATrackWheel>(AttachedActor);
+		if (Wheel)
 		{
-			auto Wheel = Cast<ATrackWheel>(Child->GetChildActor());
-			if (Wheel) 
+			Wheels.Add(Wheel);
+			auto Parent = Cast<UChildActorComponent>(GetRootComponent()->GetAttachParent());
+			if (Parent)
 			{
-				Wheels.Add(Wheel);
-				auto Body = Cast<UPrimitiveComponent>(GetAttachParent());
-				auto BodyActor = Cast<UChildActorComponent>(GetAttachParent());
+				auto Body = Cast<UPrimitiveComponent>(Parent->GetAttachParent());
 				if (Body)
 				{
 					Wheel->Initialise(Body);
 				}
-				else if (BodyActor)
-				{
-					Wheel->Initialise(Cast<UPrimitiveComponent>(BodyActor->GetAttachParent()));
-				}
 			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Track isn't attached through ChildActorComponent."))
+			}
+
 		}
 	}
 	return Wheels;
 }
+
+void ATankTrack::GenerateTire()
+{
+	if (Spline->GetNumberOfSplinePoints() > 1)
+
+	{
+		Spline->Duration = SegmentNumber;
+		Tire->ClearInstances();
+		for (int32 Time = 0; Time < SegmentNumber; Time++)
+		{
+			Tire->AddInstance(Spline->GetTransformAtTime(Time, ESplineCoordinateSpace::Local, true, true));
+		}
+	}
+}
+
+void ATankTrack::AnimateTire(float Delta, float Rate, UTimelineComponent* Timeline, UPrimitiveComponent* RotationalComponent)
+{
+	if (!RotationalComponent || !Timeline) return;
+	auto RotationalVelocity = RotationalComponent->GetPhysicsAngularVelocityInDegrees();
+	auto LocalVelocity = GetActorTransform().InverseTransformPosition(RotationalVelocity + GetActorLocation());
+	Timeline->SetPlayRate(LocalVelocity.Y * Rate);
+	for (int32 Time = 0; Time < SegmentNumber; Time++)
+	{
+		auto InstanceTime = FMath::Fmod(Time + (SegmentNumber * Delta), SegmentNumber);
+		Tire->UpdateInstanceTransform(Time, Spline->GetTransformAtTime(InstanceTime, ESplineCoordinateSpace::Local, true, true), false, false, true);
+	}
+	Tire->MarkRenderStateDirty();
+}
+
+#if WITH_EDITOR
+void ATankTrack::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	GenerateTire();
+}
+
+void ATankTrack::PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent)
+{
+	GenerateTire();
+}
+#endif

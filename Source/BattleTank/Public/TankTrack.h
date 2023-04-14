@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/StaticMeshComponent.h"
+#include "GameFramework/Actor.h"
 #include "TankTrack.generated.h"
 
 UENUM()
@@ -14,20 +14,20 @@ enum class ETrackSide : uint8
 	Left
 };
 
+class UInstancedStaticMeshComponent;
+class USplineComponent;
+class UTimelineComponent;
 class ATrackWheel;
 
-/**
- * 
- */
-UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class BATTLETANK_API UTankTrack : public UStaticMeshComponent
+UCLASS()
+class BATTLETANK_API ATankTrack : public AActor
 {
 	GENERATED_BODY()
+	
+public:	
+	// Sets default values for this actor's properties
+	ATankTrack();
 
-protected:
-	virtual void BeginPlay() override;
-
-public: 
 	UFUNCTION(BlueprintCallable, Category = "Setup")
 	ETrackSide GetTrackSide() const;
 	UFUNCTION(BlueprintCallable, Category = "Setup")
@@ -39,14 +39,41 @@ public:
 
 	void SetThrottle(float Throttle);
 
+protected:
+
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
+#endif
+
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* Track = nullptr;
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Components")
+	UInstancedStaticMeshComponent* Tire = nullptr;
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Components")
+	USplineComponent* Spline = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Setup")
+	int32 SegmentNumber = 40;
+
+	UFUNCTION(BlueprintCallable, Category = "Setup")
+	void AnimateTire(float Delta, float Rate, UTimelineComponent* Timeline, UPrimitiveComponent* RotationalComponent);
+
+
 private:
+
 	UPROPERTY(EditDefaultsOnly, Category = "Setup")
-	ETrackSide TrackSide = ETrackSide::None;	
+	ETrackSide TrackSide = ETrackSide::None;
 	UPROPERTY(EditDefaultsOnly, Category = "Setup")
 	float MaxDrivingForce = 10000.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Setup")
 	float TurnFactor = 0.75;
 
 	TArray<ATrackWheel*> FindAttachedWheels();
-	TArray<ATrackWheel*> Wheels;
+	TArray<ATrackWheel*> TrackWheels;
+	void GenerateTire();
 };

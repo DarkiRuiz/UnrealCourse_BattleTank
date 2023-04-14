@@ -8,7 +8,9 @@ public class BattleTankEditorTarget : TargetRules
 	public BattleTankEditorTarget(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Editor;
+        DefaultBuildSettings = BuildSettingsVersion.V2;
+        IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
 
-		ExtraModuleNames.AddRange( new string[] { "BattleTank" } );
+        ExtraModuleNames.AddRange( new string[] { "BattleTank" } );
 	}
 }

@@ -43,6 +43,23 @@ void AProjectile::BeginPlay()
 
 }
 
+void AProjectile::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (GetInstigator() != nullptr)
+	{
+		GetInstigator()->ForEachComponent<UPrimitiveComponent>(true, [&](UPrimitiveComponent* InPrimComp)
+			{
+				if (InPrimComp->IsRegistered() && InPrimComp->IsCollisionEnabled())
+				{
+					CollisionMesh->IgnoreComponentWhenMoving(InPrimComp, false);
+					InPrimComp->IgnoreComponentWhenMoving(CollisionMesh, false);
+				}
+			});
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
 float AProjectile::GetProjectileAmmo() const
 {
 	return ProjectileAmmo;
@@ -55,7 +72,20 @@ float AProjectile::GetProjectileDamage() const
 
 void AProjectile::Launch(float Speed)
 {
-	UGameplayStatics::ApplyDamage(Instigator, ProjectileAmmo, GetInstigatorController(), Instigator, ProjectileAmmoType);
+	UGameplayStatics::ApplyDamage(GetInstigator(), ProjectileAmmo, GetInstigatorController(), GetInstigator(), ProjectileAmmoType);
+	
+	if (GetInstigator() != nullptr) 
+	{
+		GetInstigator()->ForEachComponent<UPrimitiveComponent>(true, [&](UPrimitiveComponent* InPrimComp)
+			{
+				if (InPrimComp->IsRegistered() && InPrimComp->IsCollisionEnabled())
+				{
+					CollisionMesh->IgnoreComponentWhenMoving(InPrimComp, true);
+					InPrimComp->IgnoreComponentWhenMoving(CollisionMesh, true);
+				}
+			});
+	}
+	
 	ProjectileMovement->SetVelocityInLocalSpace(FVector::ForwardVector * Speed);
 	ProjectileMovement->Activate();
 	LaunchBlast->Activate();
@@ -63,6 +93,24 @@ void AProjectile::Launch(float Speed)
 
 void AProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit)
 {
+	bool bSelfCollision = false;
+	
+	if (GetInstigator() != nullptr)
+	{
+		GetInstigator()->ForEachComponent<UPrimitiveComponent>(true, [&](UPrimitiveComponent* InPrimComp)
+			{
+				if (InPrimComp->IsRegistered() && InPrimComp->IsCollisionEnabled())
+				{
+					if (OtherComponent == InPrimComp)
+					{
+						bSelfCollision = true;
+					}
+				}
+			});
+	}
+
+	if (bSelfCollision) return;
+
 	SetActorEnableCollision(false);
 	CollisionMesh->SetVisibility(false);
 
@@ -71,7 +119,7 @@ void AProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, U
 
 	ExplosionForce->FireImpulse();
 
-	UGameplayStatics::ApplyRadialDamage(this, ProjectileDamage, ExplosionForce->GetComponentLocation(), ExplosionForce->Radius, ProjectileDamageType, TArray<AActor*>(), Instigator, GetInstigatorController());
+	UGameplayStatics::ApplyRadialDamage(this, ProjectileDamage, ExplosionForce->GetComponentLocation(), ExplosionForce->Radius, ProjectileDamageType, TArray<AActor*>(), GetInstigator(), GetInstigatorController());
 
 	LaunchBlast->Deactivate();
 	ImpactBlast->Activate();

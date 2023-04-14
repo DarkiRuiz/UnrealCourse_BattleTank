@@ -30,6 +30,10 @@ void UTankAimingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 	{
 		FiringState = EFiringState::Reloading;
 	}
+	else if (bAimingOutOfBounds)
+	{
+		FiringState = EFiringState::OutOfBounds;
+	}
 	else if (IsBarrelMoving())
 	{
 		FiringState = EFiringState::Aiming;
@@ -54,6 +58,15 @@ bool UTankAimingComponent::IsBarrelMoving()
 	if (!ensure(Barrel)) { return false; }
 	if (!ensure(ProjectileBP)) { return false; }
 	return !Barrel->GetForwardVector().Equals(AimDirection, AimTolerance);
+}
+
+bool UTankAimingComponent::IsAimingOutOfBounds()
+{
+	if (!ensure(Turret)) { return true; }
+	if (!ensure(Barrel)) { return true; }
+	if (!ensure(ProjectileBP)) { return true; }
+
+	return bAimingOutOfBounds;
 }
 
 void UTankAimingComponent::OnTakeAnyDamage(AActor * DamagedActor, float Damage, const UDamageType * DamageType, AController * InstigatedBy, AActor * DamageCauser)
@@ -92,7 +105,7 @@ void UTankAimingComponent::Fire()
 	{
 		FActorSpawnParameters SpawnParameters = FActorSpawnParameters();
 		SpawnParameters.Instigator = Cast<APawn>(GetOwner());
-		auto Projectile = GetWorld()->SpawnActor<AProjectile>(ProjectileBP, Barrel->GetSocketLocation(ProjectileSocket), Barrel->GetSocketRotation(ProjectileSocket), SpawnParameters);
+		auto Projectile = GetWorld()->SpawnActor<AProjectile>(ProjectileBP, Barrel->GetSocketLocation(ProjectileSocket), Barrel->GetSocketRotation(ProjectileSocket), SpawnParameters);		
 		Projectile->Launch(LaunchSpeed);
 		LastFireTime = GetWorld()->GetTimeSeconds();
 	}
@@ -103,28 +116,49 @@ void UTankAimingComponent::EnemyKilled(AActor* Enemy)
 	KillCount++;
 }
 
-void UTankAimingComponent::AimAt(FVector HitLocation)
+void UTankAimingComponent::AimAt(FVector InAimVector)
 {
 	if (!ensure(Turret)) { return; }
 	if (!ensure(Barrel)) { return; }
 	if (!ensure(ProjectileBP)) { return; }
 
-	FVector OutLaunchVelocity(0);
-	FVector StartLocation = Barrel->GetSocketLocation(ProjectileSocket);
-	if (UGameplayStatics::SuggestProjectileVelocity(this, OutLaunchVelocity, StartLocation, HitLocation, LaunchSpeed, false, 0, 0, ESuggestProjVelocityTraceOption::DoNotTrace))
+	if (!bAimingOutOfBounds) 
 	{
-		AimDirection = OutLaunchVelocity.GetSafeNormal();
-		auto BarrelRotator = Barrel->GetForwardVector().Rotation();
-		auto AimRotator = AimDirection.Rotation();
-		auto DeltaRotator = AimRotator - BarrelRotator;
-		if (FMath::Abs(DeltaRotator.Yaw) < 180)
+		FVector OutLaunchVelocity(0);
+		FVector StartLocation = Barrel->GetSocketLocation(ProjectileSocket);
+		if (!UGameplayStatics::SuggestProjectileVelocity(this, OutLaunchVelocity, StartLocation, InAimVector, LaunchSpeed, false, 0, 0, ESuggestProjVelocityTraceOption::DoNotTrace))
 		{
-			Turret->Rotate(DeltaRotator.Yaw);
+			return;
 		}
-		else
-		{
-			Turret->Rotate(-DeltaRotator.Yaw);
-		}
+			AimDirection = OutLaunchVelocity.GetSafeNormal();
+	} 
+	else
+	{
+		AimDirection = InAimVector;
+	}
+
+	auto AimRotator = AimDirection.Rotation();
+
+	auto BarrelRotator = Barrel->GetForwardVector().Rotation();
+	auto DeltaRotator = AimRotator - BarrelRotator;
+
+	if (FMath::Abs(DeltaRotator.Yaw) < 180)
+	{
+		Turret->Rotate(DeltaRotator.Yaw);
+	}
+	else
+	{
+		Turret->Rotate(-DeltaRotator.Yaw);
+	}
+
+	if (!bAimingOutOfBounds)
+	{
 		Barrel->Elevate(DeltaRotator.Pitch);
 	}
+}
+
+
+void UTankAimingComponent::SetAimingOutOfBounds(bool bInOutOfBounds)
+{
+	bAimingOutOfBounds = bInOutOfBounds;
 }
